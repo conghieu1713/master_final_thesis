@@ -30,22 +30,20 @@ library(tidyr)
 # -- 2. THIẾT LẬP CÁC THAM SỐ CHO MÔ HÌNH -------------------------------------- #
 # ------------------------------------------------------------------------------ #
 # Lựa chọn kịch bản làm mềm return trong GARCH-MIDAS
-do_arma_approach <- 2 # 1. arma11, 2. auto.arima
+do_arma_approach <- 1 # 1. ARMA(1,1), 2. auto.arima
 
-# Cấu hình các cặp tài sản
+# Cấu hình các cặp tài sản và tham số K_lags tương ứng
 asset_pairs_config <- list(
-  list(pair = c("VNIndex", "XAUUSD")),
-  list(pair = c("VNIndex", "GC_F")),
-  list(pair = c("VNIndex", "SJC"))
+  list(pair = c("VNIndex", "XAUUSD"), K_lags = 36),
+  list(pair = c("VNIndex", "GC_F"),   K_lags = 36),
+  list(pair = c("VNIndex", "SJC"),    K_lags = 24)
 )
 
-# Cấu hình các biến ngoại sinh X và tham số MIDAS tương ứng
+# Cấu hình các biến ngoại sinh X (không bao gồm K_lags)
 exogenous_vars_config <- list(
-  list(var = "GPR", K_lags = 24),
-  list(var = "GPRT", K_lags = 24),
-  list(var = "GPRA", K_lags = 24)
-  # list(var = "GEPU_current", K_lags = 36),
-  # list(var = "GEPU_ppp", K_lags = 36)
+  list(var = "GPR"),
+  list(var = "GPRT"),
+  list(var = "GPRA")
 )
 
 # Giá trị khởi tạo cho thuật toán tối ưu hóa: a, b, m, theta, w2
@@ -265,17 +263,17 @@ report_dcc_x_results <- function(optim_results, z_matrix, x_monthly, month_map, 
 # Vòng lặp qua từng biến ngoại sinh
 for (x_config in exogenous_vars_config) {
   x_var  <- x_config$var
-  K_lags <- x_config$K_lags
-  
+
   # Vòng lặp qua từng cặp tài sản
   for (asset_config in asset_pairs_config) {
     asset1 <- asset_config$pair[1]
     asset2 <- asset_config$pair[2]
+    K_lags <- asset_config$K_lags # Lấy K_lags từ cấu hình của cặp tài sản
     
-    cat(paste("\n\n========================================================================"))
-    cat(paste("\n BẮT ĐẦU XỬ LÝ: Cặp [", asset1, "-", asset2, "] với biến X [", x_var, "]\n"))
+    cat("\n\n========================================================================")
+    cat(sprintf("\n BẮT ĐẦU XỬ LÝ: Cặp [%s-%s] với biến X [%s]\n", asset1, asset2, x_var))
     cat(sprintf(">> Tham số MIDAS được sử dụng: K_lags = %d\n", K_lags))
-    cat(paste("========================================================================\n"))
+    cat("========================================================================\n")
 
     # 1. Tải và chuẩn bị dữ liệu
     # Sử dụng try-catch để bỏ qua nếu có lỗi (ví dụ: tệp không tồn tại)
@@ -322,6 +320,6 @@ for (x_config in exogenous_vars_config) {
     # (Tùy chọn) Bạn có thể thêm hàm vẽ biểu đồ ở đây nếu muốn
     # plot_dcc_x_results(...)
     
-    cat(paste("\n HOÀN TẤT XỬ LÝ: Cặp [", asset1, "-", asset2, "] với biến X [", x_var, "]\n"))
+    cat(sprintf("\n HOÀN TẤT XỬ LÝ: Cặp [%s-%s] với biến X [%s]\n", asset1, asset2, x_var))
   }
 }

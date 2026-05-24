@@ -104,7 +104,13 @@
     # Kiểm định Ljung-Box LB(12) (Tự tương quan)
       lb <- Box.test(x, lag = 12, type = "Ljung-Box")
       lb_str <- add_stars(lb$statistic, lb$p.value)
-      
+
+    # Kiểm định Ljung-Box LB(12) trên chuỗi thời gian bình phương
+      lb2 <- Box.test(x^2, lag = 12, type = "Ljung-Box")
+      lb2_str <- add_stars(lb2$statistic, lb2$p.value)
+
+
+
     # Trả về kết quả dạng Data Frame
     return(data.frame(
       Mean = sprintf("%.3f", mean_val),
@@ -119,6 +125,7 @@
       `KPSS test` = kpss_str,
       `ARCH (12)` = arch_str,
       `LB (12)` = lb_str,
+      `LB2 (12)` = lb2_str,
       check.names = FALSE
     ))
   }
@@ -172,7 +179,7 @@
     rate$Date <- as.Date(rate$Date)
     
   # Đọc dữ liệu tần suất thấp
-    shocks <- read_excel("official.xlsx", sheet = "shocks", guess_max = 100000)
+    shocks <- read_excel("official.xlsx", sheet = "shocks_lg", guess_max = 100000)
     shocks$Date <- as.Date(shocks$Date)
 
 # ------------------------------------------------------------------------------ #
@@ -197,7 +204,7 @@
 # -- 8. KẾT QUẢ THỐNG KÊ MÔ TẢ CHO CHUỖI TẦN SUẤT THẤP ------------------------- #
 # ------------------------------------------------------------------------------ #
     # Thiết lập các biến cần kiểm định
-      #cols_to_test_shocks <- c("GPR", "GPRT", "GPRA", "GEPU_current", "GEPU_ppp", "WUI", "WPUI", "WSI", "WTUI")
+      #cols_to_test_shocks <- c("GPR", "GPRT", "GPRA", "GPR_VIE", "GEPU_current", "GEPU_ppp", "WUI", "WPUI", "WSI", "WTUI")
       cols_to_test_shocks <- c("GPR", "GPRT", "GPRA")
       
     # Gọi hàm xử lý và xuất file

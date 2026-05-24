@@ -1,25 +1,25 @@
 "Asset","Specification","Lag_Length","LL","AIC","BIC"
-"VNIndex","Không có yếu tố bất đối xứng","1 năm",-9428.07,18868.15,18908.43
-"VNIndex","Không có yếu tố bất đối xứng","2 năm",-9072.98,18157.97,18198.06
-"VNIndex","Không có yếu tố bất đối xứng","3 năm",-8826.44,17664.88,17704.7
-"VNIndex","Có yếu tố bất đối xứng","1 năm",-9421.72,18857.45,18904.45
-"VNIndex","Có yếu tố bất đối xứng","2 năm",-9066.14,18146.29,18193.06
-"VNIndex","Có yếu tố bất đối xứng","3 năm",-8820.48,17654.97,17701.43
-"XAUUSD","Không có yếu tố bất đối xứng","1 năm",-8688.74,17389.47,17429.76
-"XAUUSD","Không có yếu tố bất đối xứng","2 năm",-8430.09,16872.18,16912.27
-"XAUUSD","Không có yếu tố bất đối xứng","3 năm",-8075.42,16162.85,16202.67
-"XAUUSD","Có yếu tố bất đối xứng","1 năm",-8676.53,17367.06,17414.06
-"XAUUSD","Có yếu tố bất đối xứng","2 năm",-8418.63,16851.27,16898.04
-"XAUUSD","Có yếu tố bất đối xứng","3 năm",-8065.27,16144.55,16191.01
-"GC=F","Không có yếu tố bất đối xứng","1 năm",-8878.11,17768.22,17808.49
-"GC=F","Không có yếu tố bất đối xứng","2 năm",-8590.12,17192.25,17232.31
-"GC=F","Không có yếu tố bất đối xứng","3 năm",-8234.14,16480.28,16520.09
-"GC=F","Có yếu tố bất đối xứng","1 năm",-8870.63,17755.25,17802.24
-"GC=F","Có yếu tố bất đối xứng","2 năm",-8583.1,17180.2,17226.95
-"GC=F","Có yếu tố bất đối xứng","3 năm",-8228.55,16471.11,16517.55
-"SJC","Không có yếu tố bất đối xứng","1 năm",-2912.79,5837.58,5876.1
-"SJC","Không có yếu tố bất đối xứng","2 năm",-2744.75,5501.5,5539.69
-"SJC","Không có yếu tố bất đối xứng","3 năm",-2575.9,5163.8,5201.64
-"SJC","Có yếu tố bất đối xứng","1 năm",-2906.15,5826.3,5871.23
-"SJC","Có yếu tố bất đối xứng","2 năm",-2737.97,5489.94,5534.51
-"SJC","Có yếu tố bất đối xứng","3 năm",-2569.84,5153.67,5197.82
+"VNIndex","Không có yếu tố bất đối xứng","1 năm",-252.99,517.98,536.24
+"VNIndex","Không có yếu tố bất đối xứng","2 năm",-227.01,466.01,483.79
+"VNIndex","Không có yếu tố bất đối xứng","3 năm",-210.58,433.15,450.4
+"VNIndex","Có yếu tố bất đối xứng","1 năm",-243.59,501.17,522.48
+"VNIndex","Có yếu tố bất đối xứng","2 năm",-221.89,457.79,478.53
+"VNIndex","Có yếu tố bất đối xứng","3 năm",-203.62,421.25,441.37
+"XAUUSD","Không có yếu tố bất đối xứng","1 năm",-237.82,487.64,505.9
+"XAUUSD","Không có yếu tố bất đối xứng","2 năm",-221.24,454.47,472.25
+"XAUUSD","Không có yếu tố bất đối xứng","3 năm",-203.03,418.05,435.3
+"XAUUSD","Có yếu tố bất đối xứng","1 năm",-237.28,488.56,509.86
+"XAUUSD","Có yếu tố bất đối xứng","2 năm",-220.72,455.43,476.17
+"XAUUSD","Có yếu tố bất đối xứng","3 năm",-201.49,416.97,437.1
+"GC_F","Không có yếu tố bất đối xứng","1 năm",-241.19,494.38,512.64
+"GC_F","Không có yếu tố bất đối xứng","2 năm",-223.82,459.65,477.42
+"GC_F","Không có yếu tố bất đối xứng","3 năm",-205.96,423.92,441.18
+"GC_F","Có yếu tố bất đối xứng","1 năm",-241.46,496.92,518.22
+"GC_F","Có yếu tố bất đối xứng","2 năm",-220.95,455.9,476.64
+"GC_F","Có yếu tố bất đối xứng","3 năm",-202.06,418.13,438.25
+"SJC","Không có yếu tố bất đối xứng","1 năm",-73.68,159.35,175.77
+"SJC","Không có yếu tố bất đối xứng","2 năm",-66.74,145.48,161.23
+"SJC","Không có yếu tố bất đối xứng","3 năm",-58.7,129.4,144.4
+"SJC","Có yếu tố bất đối xứng","1 năm",-73.03,160.06,179.21
+"SJC","Có yếu tố bất đối xứng","2 năm",-66.7,147.39,165.77
+"SJC","Có yếu tố bất đối xứng","3 năm",-58.24,130.47,147.97

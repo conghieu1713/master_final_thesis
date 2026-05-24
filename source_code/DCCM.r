@@ -32,7 +32,7 @@
 # -- 2. THIẾT LẬP CÁC THAM SỐ CHO MÔ HÌNH -------------------------------------- #
 # ------------------------------------------------------------------------------ #
 # Lựa chọn kịch bản làm mềm return trong GARCH-MIDAS
-  do_arma_approach <- 2 # 1. arma11, 2. auto.arima
+  do_arma_approach <- 1 # 1. ARMA(1,1), 2. auto.arima
 
 # Cấu hình các cặp tài sản và tham số MIDAS tương ứng
 # Bạn có thể tùy chỉnh N_c và K_c cho từng cặp tại đây
@@ -79,6 +79,9 @@ load_and_prepare_data <- function(file_path, asset1, asset2) {
   if (!asset1 %in% colnames(data) || !asset2 %in% colnames(data)) {
     stop(sprintf("Lỗi: Tên tài sản '%s' hoặc '%s' không tồn tại trong tệp dữ liệu.", asset1, asset2))
   }
+
+  # Xóa các dòng có Date bị NA
+  data <- data[!is.na(data$Date), ]
 
   # Chuyển đổi dữ liệu thành đối tượng xts và tạo ma trận phần dư Z_t
   z_asset1 <- xts(data[[asset1]], order.by = as.Date(data$Date))

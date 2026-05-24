@@ -145,7 +145,7 @@
 # -- 7. KẾT QUẢ MA TRẬN TƯƠNG QUAN CHO CHUỖI TẦN SUẤT THẤP --------------------- #
 # ------------------------------------------------------------------------------ #
     # Thiết lập các biến cần tính toán
-      cols_to_test_shocks <- c("GPR", "GPRT", "GPRA")
+      cols_to_test_shocks <- c("GPR", "GPRT", "GPRA", "GPR_VIE", "WUI")
       
     # Gọi hàm xử lý và xuất file
       process_and_export_correlation(shocks, cols_to_test_shocks, file.path("DS Results", "CorMat LF.csv"))

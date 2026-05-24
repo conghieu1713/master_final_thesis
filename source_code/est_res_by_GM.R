@@ -39,14 +39,14 @@
   # ============================================================================ #
     # CHỈ ĐỊNH CẤU HÌNH MÔ HÌNH
     model_spec = "GM" # Ví dụ: "GM", "GM2M", "DAGM", "DAGMM2M", "GMX", "DAGMX"
-    skew_spec = "NO" # "NO" (đối xứng), "YES" (GJR)
+    skew_spec = "YES" # "NO" (đối xứng), "YES" (GJR)
     lag_fun_spec = "Beta" # "Beta" hoặc "Almon"
     
     # LỌC TRƯỚC LỢI SUẤT (PRE-FILTERING)
     do_arma_spec = TRUE # Đặt là TRUE nếu bạn muốn loại bỏ tự tương quan trong chuỗi lợi suất bằng ARMA
 
     # LỰA CHỌN PHƯƠNG PHÁP LỌC TRƯỚC LỢI SUẤT
-    do_arma_approach = 2 # 1. ARMA(1,1); 2. auto.arima
+    do_arma_approach = 1 # 1. ARMA(1,1); 2. auto.arima
 
     # CHỈ ĐỊNH BIẾN GARCH-X (HỒI QUY TẦN SỐ CAO)
     # Đặt là NULL nếu mô hình không có thành phần X (ví dụ: GM, DAGM)
@@ -64,20 +64,15 @@
     midas2_col_spec = NULL # Chỉ định tên cột của biến MIDAS 2.
     midas2_freq_spec = NULL # Tần suất của biến MIDAS 2
 
-    # CÁC THAM SỐ KHÁC
-    K_m_1 <- 36 # Độ trễ MIDAS cho yếu tố thứ nhất
-    
-    # Độ trễ MIDAS cho yếu tố thứ hai (chỉ dùng cho mô hình 2 thành phần)
-    # Đặt là NULL nếu không dùng yếu tố thứ hai
-    K_m_2 <- NULL 
     dist <- "norm" # Phân phối (norm, std, ged)
 
     # ĐỊNH NGHĨA CÁC TÀI SẢN CẦN CHẠY VÀ BIẾN MIDAS TƯƠNG ỨNG
     assets_to_process <- list(
-      list(asset = "VNIndex", midas_col = "RV_VNIndex"),
-      list(asset = "XAUUSD", midas_col = "RV_XAUUSD"),
-      list(asset = "GC_F", midas_col = "RV_GC_F"),
-      list(asset = "SJC", midas_col = "RV_SJC")
+      # K_m_1 = 36 cho VNIndex, XAUUSD, GC_F
+      list(asset = "VNIndex", midas_col = "RV_VNIndex", K_m_1 = 36, K_m_2 = NULL),
+      list(asset = "XAUUSD", midas_col = "RV_XAUUSD", K_m_1 = 36, K_m_2 = NULL),
+      list(asset = "GC_F", midas_col = "RV_GC_F", K_m_1 = 36, K_m_2 = NULL),
+      list(asset = "SJC", midas_col = "RV_SJC", K_m_1 = 24, K_m_2 = NULL)
     )
 
 
@@ -331,9 +326,14 @@
     for (item in assets_to_process) {
       asset_name <- item$asset
       midas1_col_spec <- item$midas_col
+      # Lấy K_m_1 và K_m_2 từ cấu hình của từng tài sản
+      K_m_1 <- item$K_m_1
+      K_m_2 <- item$K_m_2
       
       cat("\n\n======================================================================\n")
-      cat(sprintf("   BẮT ĐẦU XỬ LÝ TÀI SẢN: %s (MIDAS: %s)\n", asset_name, midas1_col_spec))
+      cat(sprintf("   BẮT ĐẦU XỬ LÝ TÀI SẢN: %s (MIDAS: %s, K_m_1: %s, K_m_2: %s)\n", 
+                  asset_name, midas1_col_spec, 
+                  ifelse(is.null(K_m_1), "NULL", K_m_1), ifelse(is.null(K_m_2), "NULL", K_m_2)))
       cat("======================================================================\n")
 
       # 1. Chuẩn bị dữ liệu
@@ -383,12 +383,16 @@
         std_residuals <- std_residuals[is.finite(std_residuals)]
         colnames(std_residuals) <- asset_name
         
-        lb_test <- Box.test(std_residuals, lag = 12, type = "Ljung-Box")
-        cat("\n>>> Kiểm định Ljung-Box (tự tương quan) cho phần dư (lag=12):\n")
+        lb_test <- Box.test(std_residuals, lag = 10, type = "Ljung-Box")
+        cat("\n>>> Kiểm định Ljung-Box (tự tương quan) cho phần dư (lag=10):\n")
         print(lb_test)
-        
-        arch_test <- ArchTest(as.numeric(std_residuals), lags = 12)
-        cat("\n>>> Kiểm định ARCH-LM cho phần dư (lag=12):\n")
+
+        lb2_test <- Box.test(std_residuals^2, lag = 10, type = "Ljung-Box")
+        cat("\n>>> Kiểm định Ljung-Box (tự tương quan bình phương) cho phần dư (lag=10):\n")
+        print(lb2_test)
+                
+        arch_test <- ArchTest(as.numeric(std_residuals), lags = 10)
+        cat("\n>>> Kiểm định ARCH-LM cho phần dư (lag=10):\n")
         print(arch_test)
         
         # Thêm phần dư vào danh sách tổng

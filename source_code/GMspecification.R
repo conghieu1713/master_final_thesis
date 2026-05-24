@@ -34,8 +34,10 @@
   library(readxl)
   library(dplyr)
   library(lubridate)
-  library(mfGARCH)
+  library(rumidas)
   library(tidyr)
+  library(forecast)
+  library(xts)
 
 # ------------------------------------------------------------------------------ #
 # ------------------------------------------------------------------------------ #
@@ -44,15 +46,56 @@
 # ------------------------------------------------------------------------------ #
 # -- 3. HÀM CHUẨN BỊ DỮ LIỆU CHO MỖI TÀI SẢN ----------------------------------- #
 # ------------------------------------------------------------------------------ #
-  prepare_asset_data <- function(asset_name, rate_sheet, rv_sheet) {
-    df_asset <- rate_sheet %>%
-      select(Date, y = all_of(asset_name)) %>%
-      inner_join(rv_sheet %>% select(Date, x = all_of(asset_name)), by = "Date") %>%
-      rename(date = Date) %>%
-      mutate(date = as.Date(date), year_month = floor_date(date, "month")) %>%
-      drop_na() %>%
-      arrange(date)
-    return(df_asset)
+  prepare_asset_data <- function(asset_name, rv_name, rate_sheet, rv_sheet, K_max, midas_freq, do_arma = FALSE, do_arma_approach = 1) {
+    # --- 1. Tính toán ngày bắt đầu an toàn cho dữ liệu tần suất cao (Dynamic Buffer) ---
+    calculate_hf_start_date <- function(midas_date, K_val, freq) {
+      buffer_period <- switch(freq,
+                             "monthly" = months(K_val + 1),
+                             "quarterly" = months(3 * (K_val + 1)),
+                             "yearly" = years(K_val + 1),
+                             months(K_val + 1)) # Mặc định là tháng
+      return(midas_date %m+% buffer_period)
+    }
+
+    rv_xts_full <- na.omit(xts(rv_sheet[[rv_name]], order.by = as.Date(rv_sheet$Date)))
+    colnames(rv_xts_full) <- rv_name
+    hf_start_date <- calculate_hf_start_date(start(rv_xts_full), K_max, midas_freq)
+
+    # --- 2. Lọc và chuẩn bị dữ liệu tần suất cao ---
+    daily_ret_base <- xts(rate_sheet[[asset_name]], order.by = as.Date(rate_sheet$Date))
+    colnames(daily_ret_base) <- asset_name
+    daily_ret_base <- window(daily_ret_base, start = hf_start_date) # Áp dụng bộ đệm
+    daily_ret_base <- na.omit(daily_ret_base) # Đảm bảo không có NA
+
+    # Trừ đi trung bình của chuỗi lợi suất (bước tiền xử lý phổ biến)
+    daily_ret_base <- daily_ret_base - mean(daily_ret_base, na.rm = TRUE)
+    
+    # Tùy chọn lọc ARMA
+    if (do_arma) {
+      cat(sprintf("     >> Áp dụng bộ lọc ARMA cho '%s'...\n", asset_name))
+      if (do_arma_approach == 1) {
+        arma_fit <- forecast::Arima(daily_ret_base, order = c(1, 0, 1), include.mean = TRUE)
+        cat("     >> Đã áp dụng mô hình ARMA(1,1).\n")
+      } else if (do_arma_approach == 2) {
+        arma_fit <- forecast::auto.arima(daily_ret_base, stationary = TRUE, trace = FALSE, allowdrift = FALSE)
+        selected_order <- arma_fit$arma[c(1, 6, 2)] # p, d, q
+        cat(sprintf("     >> Đã chọn mô hình ARIMA(%d,%d,%d).\n", selected_order[1], selected_order[2], selected_order[3]))
+      } else {
+        stop("Lỗi: do_arma_approach phải là 1 hoặc 2.")
+      }
+      daily_ret_base <- xts(as.numeric(residuals(arma_fit)), order.by = index(daily_ret_base))
+      colnames(daily_ret_base) <- asset_name
+      cat("     >> Lọc ARMA hoàn tất.\n")
+    }
+
+    # --- 3. Đồng bộ hóa dữ liệu tần suất cao và thấp ---
+    merged_data <- na.omit(merge.xts(daily_ret_base, rv_xts_full))
+
+    return(list(
+      daily_ret = merged_data[, 1],
+      midas_var = merged_data[, 2],
+      obs_count = nrow(merged_data)
+    ))
   }
 
 # ------------------------------------------------------------------------------ #
@@ -62,29 +105,27 @@
 # ------------------------------------------------------------------------------ #
 # -- 4. HÀM ƯỚC LƯỢNG MÔ HÌNH VÀ TRÍCH XUẤT KẾT QUẢ ---------------------------- #
 # ------------------------------------------------------------------------------ #
-  fit_and_extract_results <- function(df_asset, asset, asym_label, K_val, lag_name) {
-    is_asym <- ifelse(asym_label == "Có yếu tố bất đối xứng", TRUE, FALSE)
-    
-    # Ước lượng mô hình...
+  fit_and_extract_results <- function(daily_ret, mv_m, asset, asym_label, K_val, lag_name) {
+    skew_spec <- ifelse(asym_label == "Có yếu tố bất đối xứng", "YES", "NO")
+
+    # Ước lượng mô hình bằng ugmfit từ gói rumidas
     fit <- tryCatch({
-      fit_mfgarch(data = df_asset, y = "y", x = "x",
-                  low.freq = "year_month", var.ratio.freq = "year_month",
-                  K = K_val, gamma = is_asym)
+      ugmfit(model = "GM", skew = skew_spec, lag_fun = "Beta",
+             daily_ret = daily_ret, mv_m = mv_m, K = K_val, distribution = "norm")
     }, error = function(e) {
-      cat("     Lỗi khi xử lý", asset, "với K =", K_val, "và Asym =", is_asym, ":", e$message, "\n")
+      cat("     Lỗi khi xử lý", asset, "với K =", K_val, "và Skew =", skew_spec, ":", e$message, "\n")
       return(NULL)
     })
-    
+
     if (is.null(fit)) {
       return(NULL)
     }
-    
-    # Tính toán LogLikelihood, AIC và BIC
-    ll <- fit$llh
-    k <- length(fit$par)
-    aic <- 2 * k - 2 * ll
-    bic <- fit$bic
-    
+
+    # Trích xuất LogLikelihood, AIC và BIC từ đối tượng fit của ugmfit
+    ll <- fit$loglik
+    aic <- fit$inf_criteria[[1]]
+    bic <- fit$inf_criteria[[2]]
+
     # Trả về kết quả dạng data frame
     return(data.frame(
       Asset = asset,
@@ -103,17 +144,23 @@
 # ------------------------------------------------------------------------------ #
 # -- 5. HÀM TỔNG HỢP, XỬ LÝ VÀ XUẤT KẾT QUẢ ------------------------------------ #
 # ------------------------------------------------------------------------------ #
-  process_and_export_specifications <- function(asset_list, lags_K, lag_names, rate_sheet, rv_sheet, out_filename) {
+  process_and_export_specifications <- function(asset_list, lags_K, lag_names, rate_sheet, rv_sheet, out_filename, do_arma, do_arma_approach) {
     all_results <- list()
+    
+    # Xác định độ trễ lớn nhất để tính bộ đệm
+    K_max <- max(lags_K)
+    midas_freq <- "monthly" # Tần suất của biến MIDAS (RV)
     
     # Bắt đầu xử lý...
     for (asset in asset_list) {
       cat("\nĐang xử lý tài sản:", asset, "...\n")
       
-      # Chuẩn bị dữ liệu
-      df_asset <- prepare_asset_data(asset, rate_sheet, rv_sheet)
+      # Tạo tên biến realized volatility (rv) tương ứng một cách tự động
+      rv_asset <- paste0("RV_", asset)
+      # Chuẩn bị dữ liệu với bộ đệm động và tùy chọn lọc ARMA
+      prepared_data <- prepare_asset_data(asset, rv_asset, rate_sheet, rv_sheet, K_max, midas_freq, do_arma, do_arma_approach)
       
-      if (nrow(df_asset) == 0) {
+      if (nrow(prepared_data$daily_ret) == 0) {
         cat("     Không có dữ liệu cho tài sản:", asset, ". Bỏ qua.\n")
         next
       }
@@ -124,8 +171,12 @@
           K_val <- lags_K[i]
           lag_name <- lag_names[i]
           
+          # Tạo ma trận MIDAS cho K hiện tại.
+          # Dựa trên các tệp khác, tần suất của biến MIDAS (RV) là hàng tháng ("monthly").
+          mv_m_matrix <- mv_into_mat(prepared_data$daily_ret, prepared_data$midas_var, K_val, "monthly")
+
           # Ước lượng và trích xuất kết quả
-          result <- fit_and_extract_results(df_asset, asset, asym_label, K_val, lag_name)
+          result <- fit_and_extract_results(prepared_data$daily_ret, mv_m_matrix, asset, asym_label, K_val, lag_name)
           if (!is.null(result)) {
             all_results[[length(all_results) + 1]] <- result
           }
@@ -160,8 +211,13 @@
   setwd(dir)
   
   # Đọc dữ liệu (chỉ đọc một lần để tối ưu)
-  rate_data <- read_excel("official.xlsx", sheet = "rate")
-  rv_data <- read_excel("official.xlsx", sheet = "rv")
+  rate_data <- read_excel("official.xlsx", sheet = "rate") #%>% mutate(Date = as.Date(Date)) %>% filter(!is.na(Date))
+  rv_data <- read_excel("official.xlsx", sheet = "rv") #%>% mutate(Date = as.Date(Date)) %>% filter(!is.na(Date))
+
+  # LỌC TRƯỚC LỢI SUẤT (PRE-FILTERING) - Tương tự est_res_by_GM.R
+  # Đặt là FALSE để giữ nguyên kịch bản gốc (không lọc)
+  do_arma_spec = FALSE # Đặt là TRUE nếu bạn muốn loại bỏ tự tương quan trong chuỗi lợi suất bằng ARMA
+  do_arma_approach = 2 # 1. ARMA(1,1); 2. auto.arima
 
   # Danh sách tài sản cần xử lý
   # asset_list <- c("VNIndex", "XAUUSD", "GC_F", "SJC", "BTC", "ETH", "BNB")
@@ -184,7 +240,9 @@
     lag_names = lag_names,
     rate_sheet = rate_data,
     rv_sheet = rv_data,
-    out_filename = file.path("DS Results", "GMspecification.csv")
+    out_filename = file.path("DS Results", "GMspecification.csv"),
+    do_arma = do_arma_spec,
+    do_arma_approach = do_arma_approach
   )
 
   
